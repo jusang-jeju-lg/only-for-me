@@ -1,0 +1,1390 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>할 일 달력</title>
+<style>
+  :root{
+    --bg: #faf8f4;
+    --paper: #ffffff;
+    --ink: #1f1d1a;
+    --ink-soft: #6b6760;
+    --ink-faint: #a8a299;
+    --line: #e7e2d9;
+    --accent: #b8542f;
+    --accent-soft: #f3e3da;
+    --p-high: #e0312b;
+    --p-mid: #f0a500;
+    --p-low: #2e9e4f;
+    --today-bg: #fff6ee;
+    --shadow: 0 1px 2px rgba(31,29,26,0.04), 0 4px 14px rgba(31,29,26,0.05);
+    --radius: 10px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family: "Pretendard", -apple-system, "Apple SD Gothic Neo", "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    min-height:100vh;
+    padding: 28px 16px 80px;
+  }
+  .wrap{
+    max-width: 1180px;
+    margin: 0 auto;
+  }
+  .layout{
+    display:flex;
+    align-items:flex-start;
+    gap: 22px;
+  }
+  .cal-col{
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  .day-col{
+    flex: 0 0 380px;
+    position: sticky;
+    top: 28px;
+  }
+  @media (max-width: 880px){
+    .layout{ flex-direction: column; }
+    .day-col{ flex: 1 1 auto; width:100%; position: static; }
+  }
+
+  /* ---------- Calendar header ---------- */
+  .cal-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom: 18px;
+  }
+  .cal-title{
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  .cal-nav{
+    display:flex;
+    align-items:center;
+    gap: 4px;
+  }
+  .nav-btn{
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: var(--paper);
+    cursor:pointer;
+    font-size: 15px;
+    color: var(--ink-soft);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .nav-btn:hover{ background: var(--accent-soft); color: var(--accent); }
+  .today-btn{
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: var(--paper);
+    cursor:pointer;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--ink-soft);
+    padding: 0 10px;
+    height: 32px;
+    margin-left: 4px;
+  }
+  .today-btn:hover{ background: var(--accent-soft); color: var(--accent); }
+
+  /* ---------- Calendar grid ---------- */
+  .cal-grid{
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow:hidden;
+    margin-bottom: 22px;
+  }
+  .cal-weekdays{
+    display:grid;
+    grid-template-columns: repeat(7, 1fr);
+    border-bottom: 1px solid var(--line);
+  }
+  .cal-weekdays div{
+    text-align:center;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--ink-faint);
+    padding: 9px 0;
+    letter-spacing: 0.03em;
+  }
+  .cal-weekdays div:first-child{ color: var(--p-high); }
+  .cal-weekdays div:last-child{ color: #4a6fa5; }
+
+  .cal-body{
+    display:grid;
+    grid-template-columns: repeat(7, 1fr);
+  }
+  .cal-cell{
+    min-height: 76px;
+    border-right: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    padding: 6px 6px 8px;
+    cursor:pointer;
+    position:relative;
+    display:flex;
+    flex-direction:column;
+    transition: background .12s;
+  }
+  .cal-cell:nth-child(7n){ border-right:none; }
+  .cal-cell.empty{ cursor:default; background: repeating-linear-gradient(135deg, transparent, transparent 6px, #f3f1ec 6px, #f3f1ec 7px); }
+  .cal-cell:not(.empty):hover{ background: var(--accent-soft); }
+  .cal-cell.selected{ background: var(--today-bg); box-shadow: inset 0 0 0 2px var(--accent); }
+  .cal-cell.is-today .cell-num{ color: var(--accent); font-weight: 800; }
+
+  .cell-num{
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--ink-soft);
+    margin-bottom: 4px;
+  }
+  .cell-dots{
+    display:flex;
+    flex-wrap:wrap;
+    gap: 3px;
+    margin-top: auto;
+  }
+  .cell-dots span{
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    flex-shrink:0;
+  }
+  .cell-dots span.p-high{ background: var(--p-high); }
+  .cell-dots span.p-mid{ background: var(--p-mid); }
+  .cell-dots span.p-low{ background: var(--p-low); }
+  .cell-dots span.is-done{ opacity: 0.3; }
+  .cell-progress{
+    font-size: 10px;
+    color: var(--ink-faint);
+    margin-top: 3px;
+    font-weight: 600;
+  }
+
+  /* ---------- Day panel ---------- */
+  .day-panel{
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 18px;
+    max-height: calc(100vh - 56px);
+    overflow-y: auto;
+  }
+  .day-panel-header{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    margin-bottom: 4px;
+    flex-wrap:wrap;
+    gap:6px;
+  }
+  .day-panel-title{
+    font-size: 18px;
+    font-weight: 700;
+  }
+  .day-panel-title .wd{
+    font-size: 13px;
+    color: var(--accent);
+    font-weight: 600;
+    margin-left: 6px;
+  }
+  .day-panel-stats{
+    font-size: 12.5px;
+    color: var(--ink-soft);
+  }
+  .day-panel-stats b{ color: var(--ink); }
+
+  .progress-track{
+    height: 6px;
+    background: var(--line);
+    border-radius: 999px;
+    overflow:hidden;
+    margin: 10px 0 18px;
+  }
+  .progress-fill{
+    height:100%;
+    background: var(--accent);
+    width:0%;
+    transition: width 0.3s ease;
+  }
+
+  .add-form{
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 12px;
+    margin-bottom: 18px;
+    background: var(--bg);
+  }
+  .add-row{
+    display:flex;
+    gap: 8px;
+  }
+  .add-row input[type=text]{
+    flex:1;
+    border: 1px solid var(--line);
+    background: var(--paper);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 14.5px;
+    color: var(--ink);
+    outline:none;
+    font-family: inherit;
+  }
+  .add-row input[type=text]:focus{ border-color: var(--accent); }
+  .priority-picker{ display:flex; gap: 4px; }
+  .priority-picker button{
+    width: 34px; height: 38px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: var(--paper);
+    cursor:pointer;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--ink-soft);
+    transition: all .15s;
+  }
+  .priority-picker button[data-p="high"].active{ background: var(--p-high); border-color: var(--p-high); color:#fff; }
+  .priority-picker button[data-p="mid"].active{ background: var(--p-mid); border-color: var(--p-mid); color:#fff; }
+  .priority-picker button[data-p="low"].active{ background: var(--p-low); border-color: var(--p-low); color:#fff; }
+  .add-submit{
+    border:none;
+    background: var(--ink);
+    color: #fff;
+    border-radius: 8px;
+    padding: 0 16px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor:pointer;
+  }
+  .add-submit:hover{ background: var(--accent); }
+
+  .detail-toggle-row{ margin-top: 9px; }
+  .detail-toggle-row a{
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    cursor:pointer;
+    text-decoration: underline;
+    text-decoration-color: var(--line);
+    text-underline-offset: 3px;
+  }
+  textarea#add-detail{
+    width:100%;
+    margin-top: 8px;
+    min-height: 56px;
+    border:1px solid var(--line);
+    background: var(--paper);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-family: inherit;
+    font-size: 13.5px;
+    color: var(--ink);
+    resize: vertical;
+    display:none;
+  }
+  textarea#add-detail.show{ display:block; }
+
+  .list{
+    list-style:none;
+    margin:0; padding:0;
+    display:flex;
+    flex-direction:column;
+    gap: 8px;
+  }
+  .section-label{
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 16px 0 8px 2px;
+    font-weight: 700;
+  }
+
+  .task{
+    background: var(--ink-faint);
+    border: 1px solid transparent;
+    border-radius: var(--radius);
+    overflow:hidden;
+    color: #fff;
+  }
+  .task[data-priority="high"]{ background: var(--p-high); }
+  .task[data-priority="mid"]{ background: var(--p-mid); }
+  .task[data-priority="low"]{ background: var(--p-low); }
+  .task.done-task{
+    background: var(--paper);
+    border-color: var(--line);
+  }
+  .task.dragging{ opacity: 0.4; }
+  .task.drag-over{ outline: 2px dashed var(--ink); outline-offset: -2px; }
+
+  .task-main{
+    display:flex;
+    align-items:flex-start;
+    gap: 10px;
+    padding: 11px 10px 11px 6px;
+  }
+  .drag-handle{
+    cursor: grab;
+    color: rgba(255,255,255,0.75);
+    padding: 4px 2px;
+    user-select:none;
+    font-size: 14px;
+    line-height: 1;
+    margin-top: 2px;
+    touch-action: none;
+  }
+  .task.done-task .drag-handle{ color: var(--ink-faint); }
+  .drag-handle:active{ cursor: grabbing; }
+
+  .check{
+    width: 20px; height: 20px;
+    flex-shrink:0;
+    border-radius: 6px;
+    border: 1.5px solid rgba(255,255,255,0.85);
+    background: rgba(255,255,255,0.12);
+    cursor:pointer;
+    margin-top: 2px;
+    position:relative;
+    transition: all .15s;
+  }
+  .task.done-task .check{ border-color: var(--line); background: var(--paper); }
+  .check.done{ background: #fff; border-color: #fff; }
+  .check.done::after{
+    content:"";
+    position:absolute;
+    left: 5px; top: 1px;
+    width: 5px; height: 9px;
+    border: solid;
+    border-color: var(--p-high);
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+  .task[data-priority="mid"] .check.done::after{ border-color: var(--p-mid); }
+  .task[data-priority="low"] .check.done::after{ border-color: var(--p-low); }
+  .task[data-priority="high"] .check.done::after{ border-color: var(--p-high); }
+  .task.done-task .check.done{ background: var(--accent); border-color: var(--accent); }
+  .task.done-task .check.done::after{ border-color: #fff; }
+
+  .task-body{ flex:1; min-width:0; }
+  .task-title-row{
+    display:flex;
+    align-items:center;
+    gap: 8px;
+    cursor:pointer;
+  }
+  .task-title{ font-size: 14.5px; font-weight: 700; word-break: break-word; color: #fff; }
+  .task.done-task .task-title{
+    text-decoration: line-through;
+    color: var(--ink-soft);
+    font-weight: 600;
+  }
+  .carry-badge{
+    font-size: 10.5px;
+    background: rgba(255,255,255,0.22);
+    color: #fff;
+    padding: 2px 6px;
+    border-radius: 999px;
+    font-weight: 700;
+    flex-shrink:0;
+  }
+  .task.done-task .carry-badge{ background: var(--accent-soft); color: var(--accent); }
+  .prio-tag{ font-size: 10.5px; color: rgba(255,255,255,0.8); flex-shrink:0; font-weight: 600; }
+  .task.done-task .prio-tag{ color: var(--ink-faint); font-weight: 400; }
+  .expand-arrow{
+    margin-left:auto;
+    font-size: 11px;
+    color: rgba(255,255,255,0.8);
+    transition: transform .15s;
+    flex-shrink:0;
+  }
+  .task.done-task .expand-arrow{ color: var(--ink-faint); }
+  .task.expanded .expand-arrow{ transform: rotate(90deg); }
+
+  .task-detail{
+    display:none;
+    padding: 0 10px 13px 34px;
+    font-size: 13.5px;
+    color: rgba(255,255,255,0.92);
+    line-height: 1.55;
+    white-space: pre-wrap;
+  }
+  .task.done-task .task-detail{ color: var(--ink-soft); }
+  .task.expanded .task-detail{ display:block; }
+  .task-detail textarea{
+    width:100%;
+    min-height: 64px;
+    border:1px solid rgba(255,255,255,0.5);
+    background: rgba(255,255,255,0.14);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-family: inherit;
+    font-size: 13.5px;
+    color: #fff;
+    resize: vertical;
+  }
+  .task-detail textarea::placeholder{ color: rgba(255,255,255,0.65); }
+  .task.done-task .task-detail textarea{
+    border-color: var(--line);
+    background: var(--bg);
+    color: var(--ink);
+  }
+  .detail-actions{ margin-top: 6px; display:flex; gap: 6px; }
+  .detail-actions button{
+    font-size: 12px;
+    border:none;
+    border-radius: 6px;
+    padding: 5px 10px;
+    cursor:pointer;
+    font-weight:600;
+  }
+  .btn-save{ background: #fff; color: var(--ink); }
+  .btn-save:hover{ background: var(--ink); color: #fff; }
+  .btn-cancel{ background: rgba(255,255,255,0.22); color: #fff; }
+  .task.done-task .btn-save{ background: var(--ink); color:#fff; }
+  .task.done-task .btn-save:hover{ background: var(--accent); }
+  .task.done-task .btn-cancel{ background: var(--line); color: var(--ink-soft); }
+
+  .task-controls{ display:flex; gap: 2px; flex-shrink:0; }
+  .icon-btn{
+    width: 27px; height: 27px;
+    border:none;
+    background: transparent;
+    color: rgba(255,255,255,0.85);
+    cursor:pointer;
+    border-radius: 6px;
+    font-size: 13.5px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .icon-btn:hover{ background: rgba(255,255,255,0.22); color: #fff; }
+  .task.done-task .icon-btn{ color: var(--ink-faint); }
+  .task.done-task .icon-btn:hover{ background: var(--accent-soft); color: var(--accent); }
+
+  .empty-state{
+    text-align:center;
+    padding: 30px 20px;
+    color: var(--ink-faint);
+    font-size: 13.5px;
+  }
+
+  /* ---------- Sync bar ---------- */
+  .sync-bar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom: 14px;
+    padding: 8px 12px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .sync-status{
+    display:flex;
+    align-items:center;
+    gap: 7px;
+    font-size: 12.5px;
+    color: var(--ink-soft);
+  }
+  .sync-dot{
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--ink-faint);
+    flex-shrink:0;
+  }
+  .sync-dot.connected{ background: var(--p-low); }
+  .sync-dot.syncing{ background: var(--p-mid); animation: pulse 1s infinite; }
+  .sync-dot.error{ background: var(--p-high); }
+  @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:0.35;} }
+
+  .sync-actions{ display:flex; gap: 6px; }
+  .sync-btn{
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid var(--line);
+    background: var(--bg);
+    color: var(--ink-soft);
+    border-radius: 7px;
+    padding: 6px 10px;
+    cursor:pointer;
+  }
+  .sync-btn:hover{ background: var(--accent-soft); color: var(--accent); }
+
+  /* ---------- Modal ---------- */
+  .modal-overlay{
+    display:none;
+    position: fixed;
+    inset: 0;
+    background: rgba(31,29,26,0.45);
+    z-index: 100;
+    align-items:center;
+    justify-content:center;
+    padding: 20px;
+  }
+  .modal-overlay.show{ display:flex; }
+  .modal{
+    background: var(--paper);
+    border-radius: 12px;
+    padding: 22px;
+    max-width: 420px;
+    width: 100%;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+  }
+  .modal-title{ font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+  .modal-desc{ font-size: 12.5px; color: var(--ink-soft); line-height: 1.6; margin-bottom: 16px; }
+  .modal-label{ font-size: 12px; font-weight: 600; color: var(--ink-soft); display:block; margin-bottom: 5px; }
+  .modal-input{
+    width:100%;
+    border: 1px solid var(--line);
+    background: var(--bg);
+    border-radius: 8px;
+    padding: 9px 11px;
+    font-size: 13.5px;
+    font-family: inherit;
+    color: var(--ink);
+    margin-bottom: 14px;
+    outline: none;
+  }
+  .modal-input:focus{ border-color: var(--accent); }
+  .modal-hint{ font-size: 12px; color: var(--ink-faint); margin-bottom: 10px; word-break: break-all; }
+  .modal-hint a{ color: var(--accent); }
+  .modal-actions{ display:flex; justify-content:flex-end; gap: 8px; }
+  .modal-btn-primary{
+    border:none; background: var(--ink); color:#fff;
+    border-radius: 8px; padding: 9px 16px; font-weight:600; font-size: 13.5px; cursor:pointer;
+  }
+  .modal-btn-primary:hover{ background: var(--accent); }
+  .modal-btn-secondary{
+    border:1px solid var(--line); background: var(--paper); color: var(--ink-soft);
+    border-radius: 8px; padding: 9px 16px; font-weight:600; font-size: 13.5px; cursor:pointer;
+  }
+  .modal-btn-secondary:hover{ background: var(--accent-soft); color: var(--accent); }
+  .guide-list{
+    margin: 0 0 4px;
+    padding-left: 20px;
+    font-size: 13px;
+    color: var(--ink-soft);
+    line-height: 1.8;
+  }
+  .guide-list li{ margin-bottom: 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="sync-bar">
+    <div class="sync-status" id="sync-status">
+      <span class="sync-dot" id="sync-dot"></span>
+      <span id="sync-text">로컬에만 저장됨</span>
+    </div>
+    <div class="sync-actions">
+      <button class="sync-btn" id="cloud-load-btn" style="display:none;">⇩ 시트에서 불러오기</button>
+      <button class="sync-btn" id="cloud-upload-btn" style="display:none;">⇧ 시트에 업로드</button>
+      <button class="sync-btn" id="sync-settings-btn">⚙ 구글시트 연결 설정</button>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="settings-overlay">
+    <div class="modal">
+      <div class="modal-title">구글 시트 백업</div>
+      <p class="modal-desc">Google Apps Script 웹앱 URL을 연결하면, 버튼을 눌러 변경된 항목만 시트에 업로드하거나 시트 내용을 불러올 수 있어요. 자동 동기화는 아니며, 항상 버튼을 눌러야 동작합니다. 설정 방법은 아래 링크 참고.</p>
+
+      <label class="modal-label">Apps Script 웹앱 URL</label>
+      <input type="text" id="gs-webapp-url" class="modal-input" placeholder="https://script.google.com/macros/s/.../exec">
+
+      <div class="modal-hint"><a href="#" id="setup-guide-link">설정 방법 보기 (최초 1회, 5분)</a></div>
+
+      <div class="modal-actions">
+        <button class="modal-btn-secondary" id="settings-cancel-btn">닫기</button>
+        <button class="modal-btn-primary" id="settings-save-btn">저장</button>
+      </div>
+      <div class="modal-actions" style="margin-top:8px;">
+        <button class="modal-btn-secondary" id="settings-disconnect-btn" style="display:none;">연결 해제</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="guide-overlay">
+    <div class="modal" style="max-width:560px; max-height:80vh; overflow-y:auto;">
+      <div class="modal-title">구글 시트 연결 방법</div>
+      <ol class="guide-list">
+        <li>새 구글 시트를 만듭니다 (sheets.google.com → 빈 스프레드시트).</li>
+        <li>상단 메뉴 <b>확장 프로그램 → Apps Script</b>를 클릭합니다.</li>
+        <li>기본 코드를 모두 지우고, 아래 "코드 복사" 버튼으로 받은 코드를 붙여넣습니다.</li>
+        <li>저장(💾) 후, 우측 상단 <b>배포 → 새 배포</b>를 클릭합니다.</li>
+        <li>유형 선택에서 <b>웹 앱</b>을 고르고, "액세스 권한"을 <b>모든 사용자</b>로 설정 후 배포합니다.</li>
+        <li>발급된 웹앱 URL(.../exec 로 끝남)을 복사해서, 위 입력칸에 붙여넣고 저장합니다.</li>
+      </ol>
+      <button class="modal-btn-primary" id="copy-script-btn" style="margin-top:8px;">Apps Script 코드 복사</button>
+      <div class="modal-actions" style="margin-top:14px;">
+        <button class="modal-btn-secondary" id="guide-close-btn">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="layout">
+  <div class="cal-col">
+
+  <div class="cal-header">
+    <div class="cal-title" id="cal-title">-</div>
+    <div class="cal-nav">
+      <button class="today-btn" id="today-btn">오늘</button>
+      <button class="nav-btn" id="prev-btn">‹</button>
+      <button class="nav-btn" id="next-btn">›</button>
+    </div>
+  </div>
+
+  <div class="cal-grid">
+    <div class="cal-weekdays">
+      <div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div>
+    </div>
+    <div class="cal-body" id="cal-body"></div>
+  </div>
+
+  </div>
+  <div class="day-col">
+  <div class="day-panel">
+    <div class="day-panel-header">
+      <div class="day-panel-title" id="day-title">-</div>
+      <div class="day-panel-stats" id="day-stats">0 / 0 완료</div>
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+
+    <div class="add-form">
+      <div class="add-row">
+        <input type="text" id="add-title" placeholder="할 일을 입력하세요" autocomplete="off">
+        <div class="priority-picker" id="priority-picker">
+          <button type="button" data-p="high" title="높음">상</button>
+          <button type="button" data-p="mid" class="active" title="중">중</button>
+          <button type="button" data-p="low" title="낮음">하</button>
+        </div>
+        <button class="add-submit" id="add-btn">추가</button>
+      </div>
+      <div class="detail-toggle-row">
+        <a id="detail-toggle-link">＋ 세부 내용 추가</a>
+      </div>
+      <textarea id="add-detail" placeholder="세부 내용, 메모, 체크리스트 등을 자유롭게 적어보세요"></textarea>
+    </div>
+
+    <div class="section-label">진행 중</div>
+    <ul class="list" id="active-list"></ul>
+
+    <div class="section-label" id="done-label" style="display:none;">완료됨</div>
+    <ul class="list" id="done-list"></ul>
+
+    <div class="empty-state" id="empty-state" style="display:none;">이 날짜엔 할 일이 없어요.</div>
+  </div>
+  </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const STORAGE_KEY = "daily_checklist_tasks_v1";
+  const LASTDATE_KEY = "daily_checklist_lastdate_v1";
+  const WEEKDAYS = ['일','월','화','수','목','금','토'];
+
+  function pad(n){ return String(n).padStart(2,'0'); }
+  function toStr(d){ return d.getFullYear() + "-" + pad(d.getMonth()+1) + "-" + pad(d.getDate()); }
+  function todayStr(){ return toStr(new Date()); }
+  function parseDate(s){ const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d); }
+
+  function loadTasks(){
+    try{ const raw = localStorage.getItem(STORAGE_KEY); return raw ? JSON.parse(raw) : []; }
+    catch(e){ return []; }
+  }
+  function saveTasks(tasks){
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+  }
+
+  // ================= Google Sheets Manual Backup =================
+  const GS_URL_KEY = "daily_checklist_gs_url";
+  const LAST_UPLOAD_KEY = "daily_checklist_last_upload_ts";
+
+  function getWebAppUrl(){ return localStorage.getItem(GS_URL_KEY) || ''; }
+  function isSyncConfigured(){ return !!getWebAppUrl(); }
+  function getLastUploadTs(){ return parseInt(localStorage.getItem(LAST_UPLOAD_KEY) || '0', 10); }
+
+  function setSyncStatus(state, text){
+    // state: 'off' | 'connected' | 'syncing' | 'error'
+    const dot = document.getElementById('sync-dot');
+    const label = document.getElementById('sync-text');
+    if(!dot || !label) return;
+    dot.className = 'sync-dot' + (state !== 'off' ? ' ' + state : '');
+    label.textContent = text;
+  }
+
+  // Each task gets an updatedAt timestamp whenever it's created/edited/checked/deleted (deleted -> tombstone)
+  function touchTask(task){
+    task.updatedAt = Date.now();
+    return task;
+  }
+
+  async function uploadToSheet(){
+    if(!isSyncConfigured()) return;
+    const url = getWebAppUrl();
+    setSyncStatus('syncing', '업로드 중...');
+    try{
+      const allTasks = loadTasks();
+      const lastTs = getLastUploadTs();
+      // send only tasks changed since the last successful upload
+      const changed = allTasks.filter(t => (t.updatedAt || 0) > lastTs);
+      const tombstones = (JSON.parse(localStorage.getItem('daily_checklist_tombstones_v1') || '[]'))
+        .filter(t => (t.updatedAt || 0) > lastTs);
+
+      if(changed.length === 0 && tombstones.length === 0){
+        setSyncStatus('connected', '변경사항 없음 · 이미 최신');
+        return;
+      }
+
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // avoids CORS preflight on Apps Script
+        body: JSON.stringify({ action: 'upsert', tasks: changed, deletedIds: tombstones.map(t=>t.id) })
+      });
+      const data = await res.json().catch(()=>({ok:true}));
+      if(data && data.ok === false){
+        setSyncStatus('error', '업로드 실패: ' + (data.error || '알 수 없는 오류'));
+        return;
+      }
+      localStorage.setItem(LAST_UPLOAD_KEY, String(Date.now()));
+      localStorage.setItem('daily_checklist_tombstones_v1', JSON.stringify(
+        (JSON.parse(localStorage.getItem('daily_checklist_tombstones_v1') || '[]')).filter(t => (t.updatedAt||0) > Date.now())
+      )); // tombstones older than now are cleared after a successful confirmed upload pass; simple approach: clear all after upload
+      localStorage.setItem('daily_checklist_tombstones_v1', '[]');
+      setSyncStatus('connected', `업로드 완료 · ${changed.length}건 반영`);
+    }catch(e){
+      setSyncStatus('error', '네트워크 오류로 업로드 실패');
+    }
+  }
+
+  async function loadFromSheet(){
+    if(!isSyncConfigured()) return;
+    const url = getWebAppUrl();
+    if(!confirm('시트의 데이터로 현재 기기의 데이터를 덮어씁니다. 계속할까요?')) return;
+    setSyncStatus('syncing', '불러오는 중...');
+    try{
+      const res = await fetch(url + (url.includes('?') ? '&' : '?') + 'action=all');
+      const data = await res.json();
+      if(!data || !Array.isArray(data.tasks)){
+        setSyncStatus('error', '시트 데이터를 읽을 수 없어요');
+        return;
+      }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data.tasks));
+      localStorage.setItem(LAST_UPLOAD_KEY, String(Date.now()));
+      localStorage.setItem('daily_checklist_tombstones_v1', '[]');
+      setSyncStatus('connected', '불러오기 완료');
+      renderAll();
+    }catch(e){
+      setSyncStatus('error', '네트워크 오류로 불러오기 실패');
+    }
+  }
+
+  function recordTombstone(id){
+    const list = JSON.parse(localStorage.getItem('daily_checklist_tombstones_v1') || '[]');
+    list.push({ id, updatedAt: Date.now() });
+    localStorage.setItem('daily_checklist_tombstones_v1', JSON.stringify(list));
+  }
+
+  const APPS_SCRIPT_CODE = [
+'function doGet(e) {',
+'  var sheet = getSheet_();',
+'  if (e.parameter.action === "all") {',
+'    return ContentService.createTextOutput(JSON.stringify({ ok: true, tasks: readAllTasks_(sheet) }))',
+'      .setMimeType(ContentService.MimeType.JSON);',
+'  }',
+'  return ContentService.createTextOutput(JSON.stringify({ ok: true, message: "Daily Checklist backend running" }))',
+'    .setMimeType(ContentService.MimeType.JSON);',
+'}',
+'',
+'function doPost(e) {',
+'  try {',
+'    var body = JSON.parse(e.postData.contents);',
+'    var sheet = getSheet_();',
+'    if (body.action === "upsert") {',
+'      upsertTasks_(sheet, body.tasks || [], body.deletedIds || []);',
+'    }',
+'    return ContentService.createTextOutput(JSON.stringify({ ok: true }))',
+'      .setMimeType(ContentService.MimeType.JSON);',
+'  } catch (err) {',
+'    return ContentService.createTextOutput(JSON.stringify({ ok: false, error: String(err) }))',
+'      .setMimeType(ContentService.MimeType.JSON);',
+'  }',
+'}',
+'',
+'function getSheet_() {',
+'  var ss = SpreadsheetApp.getActiveSpreadsheet();',
+'  var sheet = ss.getSheetByName("tasks");',
+'  if (!sheet) {',
+'    sheet = ss.insertSheet("tasks");',
+'    sheet.appendRow(["id","date","title","detail","priority","done","carried","order","updatedAt"]);',
+'  }',
+'  return sheet;',
+'}',
+'',
+'var HEADERS = ["id","date","title","detail","priority","done","carried","order","updatedAt"];',
+'',
+'function readAllTasks_(sheet) {',
+'  var values = sheet.getDataRange().getValues();',
+'  var tasks = [];',
+'  for (var i = 1; i < values.length; i++) {',
+'    var row = values[i];',
+'    if (!row[0]) continue;',
+'    tasks.push({',
+'      id: row[0], date: row[1], title: row[2], detail: row[3],',
+'      priority: row[4], done: row[5] === true || row[5] === "TRUE",',
+'      carried: row[6] === true || row[6] === "TRUE",',
+'      order: Number(row[7]) || 0, updatedAt: Number(row[8]) || 0',
+'    });',
+'  }',
+'  return tasks;',
+'}',
+'',
+'function upsertTasks_(sheet, tasks, deletedIds) {',
+'  var values = sheet.getDataRange().getValues();',
+'  var idToRow = {};',
+'  for (var i = 1; i < values.length; i++) {',
+'    if (values[i][0]) idToRow[values[i][0]] = i + 1;',
+'  }',
+'  tasks.forEach(function(t) {',
+'    var rowData = [t.id, t.date, t.title, t.detail || "", t.priority, !!t.done, !!t.carried, t.order || 0, t.updatedAt || Date.now()];',
+'    if (idToRow[t.id]) {',
+'      sheet.getRange(idToRow[t.id], 1, 1, HEADERS.length).setValues([rowData]);',
+'    } else {',
+'      sheet.appendRow(rowData);',
+'      idToRow[t.id] = sheet.getLastRow();',
+'    }',
+'  });',
+'  // delete tombstoned rows, bottom-up so row indices stay valid',
+'  var rowsToDelete = [];',
+'  deletedIds.forEach(function(id) { if (idToRow[id]) rowsToDelete.push(idToRow[id]); });',
+'  rowsToDelete.sort(function(a,b){ return b - a; });',
+'  rowsToDelete.forEach(function(r) { sheet.deleteRow(r); });',
+'}'
+  ].join('\n');
+
+  function initSyncUI(){
+    const overlay = document.getElementById('settings-overlay');
+    const guideOverlay = document.getElementById('guide-overlay');
+    const openBtn = document.getElementById('sync-settings-btn');
+    const cancelBtn = document.getElementById('settings-cancel-btn');
+    const saveBtn = document.getElementById('settings-save-btn');
+    const disconnectBtn = document.getElementById('settings-disconnect-btn');
+    const uploadBtn = document.getElementById('cloud-upload-btn');
+    const loadBtn = document.getElementById('cloud-load-btn');
+    const urlInput = document.getElementById('gs-webapp-url');
+    const guideLink = document.getElementById('setup-guide-link');
+    const guideCloseBtn = document.getElementById('guide-close-btn');
+    const copyScriptBtn = document.getElementById('copy-script-btn');
+
+    function refreshButtons(){
+      const configured = isSyncConfigured();
+      uploadBtn.style.display = configured ? 'inline-block' : 'none';
+      loadBtn.style.display = configured ? 'inline-block' : 'none';
+      disconnectBtn.style.display = configured ? 'inline-block' : 'none';
+      if(configured) setSyncStatus('connected', '연결됨 · 버튼으로 동기화하세요');
+      else setSyncStatus('off', '로컬에만 저장됨');
+    }
+
+    function openModal(){
+      urlInput.value = getWebAppUrl();
+      refreshButtons();
+      overlay.classList.add('show');
+    }
+    function closeModal(){ overlay.classList.remove('show'); }
+
+    openBtn.addEventListener('click', openModal);
+    cancelBtn.addEventListener('click', closeModal);
+    overlay.addEventListener('click', (e)=>{ if(e.target === overlay) closeModal(); });
+
+    saveBtn.addEventListener('click', ()=>{
+      const url = urlInput.value.trim();
+      if(!url){ alert('웹앱 URL을 입력해주세요.'); return; }
+      localStorage.setItem(GS_URL_KEY, url);
+      refreshButtons();
+      closeModal();
+    });
+
+    disconnectBtn.addEventListener('click', ()=>{
+      if(!confirm('연결을 해제할까요? 시트의 데이터는 그대로 남고, 이 브라우저에 저장된 URL만 삭제됩니다.')) return;
+      localStorage.removeItem(GS_URL_KEY);
+      refreshButtons();
+      closeModal();
+    });
+
+    uploadBtn.addEventListener('click', uploadToSheet);
+    loadBtn.addEventListener('click', loadFromSheet);
+
+    guideLink.addEventListener('click', (e)=>{
+      e.preventDefault();
+      guideOverlay.classList.add('show');
+    });
+    guideCloseBtn.addEventListener('click', ()=>{ guideOverlay.classList.remove('show'); });
+    guideOverlay.addEventListener('click', (e)=>{ if(e.target === guideOverlay) guideOverlay.classList.remove('show'); });
+
+    copyScriptBtn.addEventListener('click', async ()=>{
+      try{
+        await navigator.clipboard.writeText(APPS_SCRIPT_CODE);
+        copyScriptBtn.textContent = '복사됨 ✓';
+        setTimeout(()=>{ copyScriptBtn.textContent = 'Apps Script 코드 복사'; }, 1800);
+      }catch(e){
+        alert('복사에 실패했어요. 직접 선택해서 복사해주세요.');
+      }
+    });
+
+    refreshButtons();
+  }
+
+  // ================= End Google Sheets Backup =================
+
+  // ---- Daily rollover: carry unfinished tasks forward to today ----
+  function rolloverCheck(){
+    const last = localStorage.getItem(LASTDATE_KEY);
+    const today = todayStr();
+    if(last === today) return;
+
+    let tasks = loadTasks();
+    if(last){
+      tasks = tasks.map(t=>{
+        if(!t.done && t.date !== today && t.date <= today){
+          // only carry the most recent unfinished version once; mark original as still on its own date
+          return t;
+        }
+        return t;
+      });
+      // find unfinished tasks on the last known date (or earlier) that aren't already represented today
+      const unfinishedLatest = tasks.filter(t => !t.done && t.date === last);
+      const todayCount = tasks.filter(t=>t.date===today).length;
+      unfinishedLatest.forEach((t, i) => {
+        tasks.push({
+          id: 't_' + Date.now() + '_' + Math.random().toString(36).slice(2,8),
+          date: today,
+          title: t.title,
+          detail: t.detail,
+          priority: t.priority,
+          done: false,
+          carried: true,
+          order: todayCount + i,
+          updatedAt: Date.now()
+        });
+      });
+    }
+    localStorage.setItem(LASTDATE_KEY, today);
+    saveTasks(tasks);
+  }
+  rolloverCheck();
+
+  function msUntilMidnight(){
+    const n = new Date();
+    const mid = new Date(n.getFullYear(), n.getMonth(), n.getDate()+1, 0, 0, 5);
+    return mid - n;
+  }
+  function scheduleMidnight(){
+    setTimeout(()=>{
+      rolloverCheck();
+      renderAll();
+      scheduleMidnight();
+    }, msUntilMidnight());
+  }
+  scheduleMidnight();
+  setInterval(()=>{ rolloverCheck(); renderAll(); }, 5*60*1000);
+
+  // ---- State ----
+  let viewYear, viewMonth; // calendar currently displayed
+  let selectedDate = todayStr();
+  {
+    const t = new Date();
+    viewYear = t.getFullYear();
+    viewMonth = t.getMonth(); // 0-indexed
+  }
+
+  // ---- DOM refs ----
+  const calTitle = document.getElementById('cal-title');
+  const calBody = document.getElementById('cal-body');
+  const prevBtn = document.getElementById('prev-btn');
+  const nextBtn = document.getElementById('next-btn');
+  const todayBtn = document.getElementById('today-btn');
+
+  const dayTitle = document.getElementById('day-title');
+  const dayStats = document.getElementById('day-stats');
+  const progressFill = document.getElementById('progress-fill');
+  const activeList = document.getElementById('active-list');
+  const doneList = document.getElementById('done-list');
+  const doneLabel = document.getElementById('done-label');
+  const emptyState = document.getElementById('empty-state');
+
+  const addTitle = document.getElementById('add-title');
+  const addBtn = document.getElementById('add-btn');
+  const addDetail = document.getElementById('add-detail');
+  const detailToggleLink = document.getElementById('detail-toggle-link');
+  const priorityPicker = document.getElementById('priority-picker');
+
+  let selectedPriority = 'mid';
+  priorityPicker.addEventListener('click', (e)=>{
+    const btn = e.target.closest('button[data-p]');
+    if(!btn) return;
+    selectedPriority = btn.dataset.p;
+    [...priorityPicker.querySelectorAll('button')].forEach(b=>b.classList.toggle('active', b===btn));
+  });
+
+  detailToggleLink.addEventListener('click', ()=>{
+    const showing = addDetail.classList.toggle('show');
+    detailToggleLink.textContent = showing ? "－ 세부 내용 숨기기" : "＋ 세부 내용 추가";
+    if(showing) addDetail.focus();
+  });
+
+  function uid(){ return 't_' + Date.now() + '_' + Math.random().toString(36).slice(2,8); }
+
+  function addTask(){
+    const title = addTitle.value.trim();
+    if(!title){ addTitle.focus(); return; }
+    const tasks = loadTasks();
+    // shift existing same-day tasks down by one so the new task can take order 0 (top)
+    tasks.forEach(t=>{
+      if(t.date === selectedDate){
+        t.order = (t.order ?? 0) + 1;
+        t.updatedAt = Date.now();
+      }
+    });
+    tasks.push({
+      id: uid(),
+      date: selectedDate,
+      title: title,
+      detail: addDetail.value.trim(),
+      priority: selectedPriority,
+      done: false,
+      carried: false,
+      order: 0,
+      updatedAt: Date.now()
+    });
+    saveTasks(tasks);
+    addTitle.value = '';
+    addDetail.value = '';
+    addDetail.classList.remove('show');
+    detailToggleLink.textContent = "＋ 세부 내용 추가";
+    renderAll();
+    addTitle.focus();
+  }
+  addBtn.addEventListener('click', addTask);
+  let isComposing = false;
+  addTitle.addEventListener('compositionstart', ()=>{ isComposing = true; });
+  addTitle.addEventListener('compositionend', ()=>{ isComposing = false; });
+  addTitle.addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter' && !isComposing && !e.isComposing){ addTask(); }
+  });
+
+  function priorityLabel(p){ return p==='high' ? '높음' : p==='low' ? '낮음' : '중간'; }
+
+  // ---- Calendar rendering ----
+  function renderCalendar(){
+    calTitle.textContent = `${viewYear}년 ${viewMonth+1}월`;
+    calBody.innerHTML = '';
+
+    const tasks = loadTasks();
+    const tasksByDate = {};
+    tasks.forEach(t=>{
+      (tasksByDate[t.date] ||= []).push(t);
+    });
+
+    const firstOfMonth = new Date(viewYear, viewMonth, 1);
+    const startWeekday = firstOfMonth.getDay();
+    const daysInMonth = new Date(viewYear, viewMonth+1, 0).getDate();
+    const today = todayStr();
+
+    for(let i=0;i<startWeekday;i++){
+      const cell = document.createElement('div');
+      cell.className = 'cal-cell empty';
+      calBody.appendChild(cell);
+    }
+
+    for(let day=1; day<=daysInMonth; day++){
+      const dateObj = new Date(viewYear, viewMonth, day);
+      const dateStr = toStr(dateObj);
+      const cell = document.createElement('div');
+      cell.className = 'cal-cell';
+      if(dateStr === today) cell.classList.add('is-today');
+      if(dateStr === selectedDate) cell.classList.add('selected');
+      cell.dataset.date = dateStr;
+
+      const num = document.createElement('div');
+      num.className = 'cell-num';
+      num.textContent = day;
+      cell.appendChild(num);
+
+      const dayTasks = (tasksByDate[dateStr] || []);
+      if(dayTasks.length){
+        const dots = document.createElement('div');
+        dots.className = 'cell-dots';
+        const prioOrder = { high: 0, mid: 1, low: 2 };
+        const sortedForDots = [...dayTasks].sort((a,b)=> (prioOrder[a.priority]??1) - (prioOrder[b.priority]??1));
+        sortedForDots.slice(0,6).forEach(t=>{
+          const dot = document.createElement('span');
+          dot.className = 'p-' + t.priority + (t.done ? ' is-done' : '');
+          dots.appendChild(dot);
+        });
+        cell.appendChild(dots);
+
+        const doneCount = dayTasks.filter(t=>t.done).length;
+        const prog = document.createElement('div');
+        prog.className = 'cell-progress';
+        prog.textContent = `${doneCount}/${dayTasks.length}`;
+        cell.appendChild(prog);
+      }
+
+      cell.addEventListener('click', ()=>{
+        selectedDate = dateStr;
+        renderAll();
+      });
+
+      calBody.appendChild(cell);
+    }
+  }
+
+  prevBtn.addEventListener('click', ()=>{
+    viewMonth--;
+    if(viewMonth<0){ viewMonth=11; viewYear--; }
+    renderCalendar();
+  });
+  nextBtn.addEventListener('click', ()=>{
+    viewMonth++;
+    if(viewMonth>11){ viewMonth=0; viewYear++; }
+    renderCalendar();
+  });
+  todayBtn.addEventListener('click', ()=>{
+    const t = new Date();
+    viewYear = t.getFullYear();
+    viewMonth = t.getMonth();
+    selectedDate = todayStr();
+    renderAll();
+  });
+
+  // ---- Day panel rendering ----
+  function renderDayPanel(){
+    const d = parseDate(selectedDate);
+    const isToday = selectedDate === todayStr();
+    dayTitle.innerHTML = `${d.getMonth()+1}월 ${d.getDate()}일` + (isToday ? ' <span style="font-size:12px;color:var(--accent);font-weight:700;">오늘</span>' : '') + `<span class="wd">${WEEKDAYS[d.getDay()]}요일</span>`;
+
+    const tasks = loadTasks().filter(t=>t.date===selectedDate);
+    tasks.sort((a,b)=>(a.order??0)-(b.order??0));
+
+    const active = tasks.filter(t=>!t.done);
+    const done = tasks.filter(t=>t.done);
+
+    activeList.innerHTML = '';
+    doneList.innerHTML = '';
+    active.forEach(t=>activeList.appendChild(renderTask(t)));
+    done.forEach(t=>doneList.appendChild(renderTask(t)));
+
+    doneLabel.style.display = done.length ? '' : 'none';
+    emptyState.style.display = tasks.length ? 'none' : '';
+
+    dayStats.innerHTML = `<b>${done.length}</b> / ${tasks.length} 완료`;
+    const pct = tasks.length ? Math.round(done.length/tasks.length*100) : 0;
+    progressFill.style.width = pct + '%';
+
+    attachDnD();
+  }
+
+  function renderTask(t){
+    const li = document.createElement('li');
+    li.className = 'task' + (t.done ? ' done-task' : '');
+    li.dataset.id = t.id;
+    li.dataset.priority = t.priority;
+    li.draggable = true;
+
+    const main = document.createElement('div');
+    main.className = 'task-main';
+
+    const handle = document.createElement('div');
+    handle.className = 'drag-handle';
+    handle.textContent = '⠿';
+    main.appendChild(handle);
+
+    const check = document.createElement('div');
+    check.className = 'check' + (t.done ? ' done' : '');
+    check.addEventListener('click', (e)=>{ e.stopPropagation(); toggleDone(t.id); });
+    main.appendChild(check);
+
+    const body = document.createElement('div');
+    body.className = 'task-body';
+
+    const titleRow = document.createElement('div');
+    titleRow.className = 'task-title-row';
+
+    const title = document.createElement('div');
+    title.className = 'task-title';
+    title.textContent = t.title;
+    titleRow.appendChild(title);
+
+    if(t.carried){
+      const badge = document.createElement('span');
+      badge.className = 'carry-badge';
+      badge.textContent = '이월';
+      titleRow.appendChild(badge);
+    }
+
+    const prioTag = document.createElement('span');
+    prioTag.className = 'prio-tag';
+    prioTag.textContent = priorityLabel(t.priority);
+    titleRow.appendChild(prioTag);
+
+    const arrow = document.createElement('span');
+    arrow.className = 'expand-arrow';
+    arrow.textContent = '▸';
+    titleRow.appendChild(arrow);
+
+    titleRow.addEventListener('click', ()=>{ li.classList.toggle('expanded'); });
+    body.appendChild(titleRow);
+
+    const detail = document.createElement('div');
+    detail.className = 'task-detail';
+
+    const detailText = document.createElement('div');
+    detailText.textContent = t.detail || '세부 내용 없음';
+    detailText.style.marginBottom = '8px';
+    detail.appendChild(detailText);
+
+    const editArea = document.createElement('textarea');
+    editArea.value = t.detail || '';
+    editArea.style.display = 'none';
+    detail.appendChild(editArea);
+
+    const actions = document.createElement('div');
+    actions.className = 'detail-actions';
+
+    const editBtn = document.createElement('button');
+    editBtn.className = 'btn-cancel';
+    editBtn.textContent = '메모 수정';
+    editBtn.addEventListener('click', ()=>{
+      detailText.style.display = 'none';
+      editArea.style.display = 'block';
+      saveBtn.style.display = 'inline-block';
+      editBtn.style.display = 'none';
+      editArea.focus();
+    });
+
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'btn-save';
+    saveBtn.textContent = '저장';
+    saveBtn.style.display = 'none';
+    saveBtn.addEventListener('click', ()=>{ updateDetail(t.id, editArea.value.trim()); });
+
+    actions.appendChild(editBtn);
+    actions.appendChild(saveBtn);
+    detail.appendChild(actions);
+    body.appendChild(detail);
+    main.appendChild(body);
+
+    const controls = document.createElement('div');
+    controls.className = 'task-controls';
+
+    const editTitleBtn = document.createElement('button');
+    editTitleBtn.className = 'icon-btn';
+    editTitleBtn.title = '제목 수정';
+    editTitleBtn.textContent = '✎';
+    editTitleBtn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      const newTitle = prompt('할 일 수정', t.title);
+      if(newTitle !== null && newTitle.trim()) updateTitle(t.id, newTitle.trim());
+    });
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'icon-btn';
+    delBtn.title = '삭제';
+    delBtn.textContent = '✕';
+    delBtn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      if(confirm('이 할 일을 삭제할까요?')) deleteTask(t.id);
+    });
+
+    controls.appendChild(editTitleBtn);
+    controls.appendChild(delBtn);
+    main.appendChild(controls);
+
+    li.appendChild(main);
+    return li;
+  }
+
+  function toggleDone(id){
+    const tasks = loadTasks();
+    const idx = tasks.findIndex(t=>t.id===id);
+    if(idx>-1){ tasks[idx].done = !tasks[idx].done; tasks[idx].updatedAt = Date.now(); saveTasks(tasks); renderAll(); }
+  }
+  function updateTitle(id, title){
+    const tasks = loadTasks();
+    const idx = tasks.findIndex(t=>t.id===id);
+    if(idx>-1){ tasks[idx].title = title; tasks[idx].updatedAt = Date.now(); saveTasks(tasks); renderAll(); }
+  }
+  function updateDetail(id, detail){
+    const tasks = loadTasks();
+    const idx = tasks.findIndex(t=>t.id===id);
+    if(idx>-1){ tasks[idx].detail = detail; tasks[idx].updatedAt = Date.now(); saveTasks(tasks); renderAll(); }
+  }
+  function deleteTask(id){
+    const tasks = loadTasks().filter(t=>t.id!==id);
+    recordTombstone(id);
+    saveTasks(tasks);
+    renderAll();
+  }
+
+  // ---- Drag and drop (reorder within selected day) ----
+  let dragSrcId = null;
+  function attachDnD(){
+    const items = [...document.querySelectorAll('.task')];
+    items.forEach(item=>{
+      item.addEventListener('dragstart', (e)=>{
+        dragSrcId = item.dataset.id;
+        item.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+      });
+      item.addEventListener('dragend', ()=>{
+        item.classList.remove('dragging');
+        items.forEach(i=>i.classList.remove('drag-over'));
+      });
+      item.addEventListener('dragover', (e)=>{ e.preventDefault(); item.classList.add('drag-over'); });
+      item.addEventListener('dragleave', ()=>{ item.classList.remove('drag-over'); });
+      item.addEventListener('drop', (e)=>{
+        e.preventDefault();
+        item.classList.remove('drag-over');
+        const targetId = item.dataset.id;
+        if(!dragSrcId || dragSrcId === targetId) return;
+        reorder(dragSrcId, targetId);
+      });
+    });
+  }
+  function reorder(srcId, targetId){
+    const tasks = loadTasks();
+    const dayTasks = tasks.filter(t=>t.date===selectedDate).sort((a,b)=>(a.order??0)-(b.order??0));
+    const others = tasks.filter(t=>t.date!==selectedDate);
+
+    const srcIdx = dayTasks.findIndex(t=>t.id===srcId);
+    const targetIdx = dayTasks.findIndex(t=>t.id===targetId);
+    if(srcIdx===-1 || targetIdx===-1) return;
+
+    const [moved] = dayTasks.splice(srcIdx,1);
+    dayTasks.splice(targetIdx,0,moved);
+    dayTasks.forEach((t,i)=>{ t.order = i; t.updatedAt = Date.now(); });
+
+    saveTasks([...others, ...dayTasks]);
+    renderAll();
+  }
+
+  function renderAll(){
+    renderCalendar();
+    renderDayPanel();
+  }
+
+  renderAll();
+  initSyncUI();
+})();
+</script>
+</body>
+</html>
