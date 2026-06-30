@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>😈 고뇌</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+    background: #fff;
+    color: #333;
+  }
+
+  /* ── TOP BAR ── */
+  #top-bar {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    background: #1a1a2e;
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.3);
+  }
+  #top-bar h1 { font-size: 14px; font-weight: 700; color: #fff; letter-spacing: -.3px; margin-right: auto; }
+  .tb-btn {
+    background: #2d2d4e; border: none; color: #ccc; font-size: 12px;
+    padding: 6px 14px; border-radius: 6px; cursor: pointer; transition: background .15s;
+  }
+  .tb-btn:hover { background: #3d3d6e; color: #fff; }
+  .tb-btn.primary { background: #837aff; color: #fff; }
+  .tb-btn.primary:hover { background: #6b62e0; }
+
+  /* ── LAYOUT ── */
+  #shell {
+    display: flex;
+    padding-top: 48px;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ── LEFT HALF: 에디터 + 통계 ── */
+  #left-half {
+    width: 50%;
+    display: flex;
+    border-right: 3px solid #c9c7ff;
+    overflow: hidden;
+  }
+
+  /* ── EDITOR PANEL ── */
+  #editor-panel {
+    flex: 1;
+    background: #fff;
+    border-right: 2px solid #e8e8f0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  #editor-scroll {
+    flex: 1; overflow-y: auto; padding: 20px;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+
+  .field-label {
+    font-size: 11px; font-weight: 700; color: #888; letter-spacing: .5px;
+    text-transform: uppercase; margin-bottom: 6px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .field-label .count { font-weight: 400; color: #bbb; font-size: 11px; }
+  .field-label .count.warn { color: #f59e0b; }
+  .field-label .count.over { color: #ef4444; }
+
+  #cat-input {
+    width: 100%; border: 1.5px solid #e0e0e0; border-radius: 8px;
+    padding: 8px 12px; font-size: 13px; color: #555; outline: none;
+    transition: border-color .15s; font-family: inherit;
+  }
+  #cat-input:focus { border-color: #837aff; }
+
+  #title-input {
+    width: 100%; border: 1.5px solid #e0e0e0; border-radius: 8px;
+    padding: 10px 12px; font-size: 16px; font-weight: 700;
+    color: #1a1a2e; resize: none; outline: none; line-height: 1.4;
+    transition: border-color .15s; font-family: inherit;
+    min-height: 64px;
+  }
+  #title-input:focus { border-color: #837aff; }
+
+  #body-input {
+    width: 100%; border: 1.5px solid #e0e0e0; border-radius: 8px;
+    padding: 12px; font-size: 14px; color: #333; resize: none; outline: none;
+    line-height: 1.75; transition: border-color .15s; font-family: inherit;
+    min-height: 300px; flex: 1;
+  }
+  #body-input:focus { border-color: #837aff; }
+
+  /* ── TOOLBAR BUTTONS ── */
+  #editor-toolbar {
+    display: flex; gap: 8px; flex-wrap: wrap;
+    padding: 12px 20px;
+    border-bottom: 2px solid #e8e8f0;
+    background: #f7f7fc;
+    flex-shrink: 0;
+  }
+  .tool-btn {
+    display: flex; align-items: center; gap: 6px;
+    border: 1.5px solid #e0e0e0; border-radius: 8px;
+    padding: 7px 12px; cursor: pointer; font-size: 12px;
+    font-weight: 600; background: #fafafa; color: #555;
+    transition: all .15s; font-family: inherit;
+  }
+  .tool-btn:hover { border-color: #837aff; color: #837aff; background: #f4f3ff; }
+  .tool-btn.img { border-color: #7dd3fc; color: #0369a1; background: #f0f8ff; }
+  .tool-btn.img:hover { background: #e0f2fe; border-color: #38bdf8; }
+  .tool-btn.cta { border-color: #a7f3d0; color: #065f46; background: #f0fdf4; }
+  .tool-btn.cta:hover { background: #dcfce7; border-color: #34d399; }
+  .tool-btn.reset { border-color: #fca5a5; color: #991b1b; background: #fff5f5; margin-left: auto; }
+  .tool-btn.reset:hover { background: #fee2e2; border-color: #f87171; }
+
+  /* ── STATS PANEL ── */
+  #stats-panel {
+    width: 220px;
+    min-width: 200px;
+    background: #fafafa;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+  .sp-section {
+    padding: 16px;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  .sp-title {
+    font-size: 11px; font-weight: 700; color: #837aff;
+    text-transform: uppercase; letter-spacing: .6px; margin-bottom: 12px;
+  }
+  .stat-row {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 9px;
+  }
+  .stat-row:last-child { margin-bottom: 0; }
+  .stat-name {
+    font-size: 12px; color: #666;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .stat-val {
+    font-size: 12px; font-weight: 700; color: #1a1a2e;
+    background: #efefff; padding: 2px 8px; border-radius: 20px;
+  }
+  .stat-val.good { background: #d1fae5; color: #065f46; }
+  .stat-val.warn { background: #fef3c7; color: #92400e; }
+  .stat-val.bad  { background: #fee2e2; color: #991b1b; }
+
+  /* tooltip */
+  .tip {
+    position: relative; display: inline-flex;
+    align-items: center; justify-content: center;
+    width: 14px; height: 14px; border-radius: 50%;
+    background: #e0e0e0; color: #888; font-size: 9px;
+    font-weight: 800; cursor: default; flex-shrink: 0;
+    font-style: normal;
+  }
+  .tip:hover::after {
+    content: attr(data-tip);
+    position: absolute; left: 18px; top: 50%; transform: translateY(-50%);
+    background: #1a1a2e; color: #fff; font-size: 11px; font-weight: 400;
+    padding: 6px 10px; border-radius: 6px; white-space: pre-line;
+    width: 180px; line-height: 1.6; z-index: 999;
+    box-shadow: 0 4px 12px rgba(0,0,0,.2);
+  }
+  .tip:hover::before {
+    content: '';
+    position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+    border: 4px solid transparent; border-right-color: #1a1a2e; z-index: 999;
+  }
+
+  /* readability bar */
+  .readability-wrap { margin-top: 4px; }
+  .read-label {
+    font-size: 12px; color: #666; margin-bottom: 6px;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .read-bar-bg {
+    height: 7px; border-radius: 99px; background: #e8e8e8; overflow: hidden; margin-bottom: 4px;
+  }
+  .read-bar-fill {
+    height: 100%; border-radius: 99px;
+    transition: width .4s, background .4s;
+  }
+  .read-score-row { display: flex; justify-content: space-between; font-size: 10px; color: #bbb; }
+
+  /* sentence chips */
+  .sent-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+  .sent-chip {
+    font-size: 10px; padding: 2px 7px; border-radius: 99px;
+    background: #f0f0f0; color: #666;
+  }
+  .sent-chip.long { background: #fee2e2; color: #991b1b; }
+
+  /* ── RIGHT HALF: PREVIEW ── */
+  #preview-panel {
+    width: 50%;
+    overflow-y: auto;
+    background: #fff;
+  }
+
+  .site-wrap {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    min-height: 100%;
+  }
+
+  /* SIDEBAR */
+  .sidebar {
+    background: #fff;
+    padding: 32px 20px;
+    border-right: 1px solid #f0f0f0;
+  }
+  .toc-box {
+    border: 1px solid #e5e5e5; border-radius: 10px;
+    padding: 16px; margin-bottom: 20px;
+  }
+  .toc-box .toc-title { font-weight: 700; color: #333; margin-bottom: 10px; font-size: 13px; }
+  .toc-box ul { list-style: none; padding: 0; }
+  .toc-box li { padding: 4px 0; }
+  .toc-box a { color: #555; text-decoration: none; font-size: 13px; line-height: 1.4; display: block; }
+  .toc-box a:hover { color: #837aff; }
+
+  .newsletter-box {
+    border: 1px solid #e5e5e5; border-radius: 10px;
+    padding: 16px; font-size: 13px;
+  }
+  .nl-title { font-weight: 700; color: #333; margin-bottom: 12px; font-size: 13px; }
+  .nl-card-img {
+    width: 100%; aspect-ratio: 16/9; object-fit: cover;
+    border-radius: 8px; display: block; margin-bottom: 6px; background: #e8e8e8;
+  }
+  .nl-card-title { font-size: 13px; font-weight: 500; color: #333; margin-bottom: 12px; line-height: 1.4; }
+  .nl-hr { border: none; border-top: 1px solid #e5e5e5; margin: 10px auto; width: 80%; }
+  .nl-desc { font-size: 12px; color: #666; line-height: 1.6; margin-bottom: 12px; }
+  .nl-input {
+    width: 100%; border: 1px solid #ddd; border-radius: 6px;
+    padding: 7px 10px; font-size: 12px; margin-bottom: 6px;
+    font-family: inherit; outline: none; color: #333;
+  }
+  .nl-row { display: flex; gap: 6px; margin-bottom: 6px; }
+  .nl-row .nl-input { margin-bottom: 0; }
+  .nl-check { font-size: 11px; color: #666; margin-bottom: 8px; display: flex; align-items: center; gap: 4px; }
+  .nl-check a { color: #837aff; }
+  .nl-submit {
+    width: 100%; background: #837aff; color: #fff; border: none;
+    border-radius: 6px; padding: 8px; font-size: 12px; font-weight: 600;
+    cursor: pointer; font-family: inherit;
+  }
+
+  /* POST MAIN */
+  .post-main { padding: 32px 36px; }
+
+  .post-category { font-size: 12px; color: #837aff; font-weight: 600; margin-bottom: 10px; }
+  #preview-title {
+    font-size: 28px; font-weight: 800; color: #1a1a2e;
+    line-height: 1.3; margin-bottom: 12px; letter-spacing: -.5px; word-break: keep-all;
+  }
+  .post-meta { font-size: 13px; color: #888; margin-bottom: 32px; display: flex; gap: 12px; }
+
+  .entry-content { font-size: 15px; line-height: 1.85; color: #333; }
+  .entry-content p { margin-bottom: 16px; word-break: keep-all; }
+  .entry-content h2 {
+    font-size: 21px; font-weight: 800; color: #1a1a2e;
+    margin: 36px 0 14px; letter-spacing: -.3px;
+  }
+  .entry-content ul { padding-left: 20px; margin-bottom: 16px; }
+  .entry-content li { margin-bottom: 6px; line-height: 1.7; }
+  .entry-content a { color: #837aff; }
+  .entry-content img { width: 100%; border-radius: 10px; display: block; margin: 20px 0; }
+
+  .preview-img-block {
+    width: 100%; aspect-ratio: 2/1; border-radius: 10px;
+    margin: 20px 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 6px;
+  }
+  .preview-img-block span { font-size: 13px; font-weight: 700; }
+  .preview-img-block small { font-size: 11px; opacity: .6; }
+
+  .cta-box {
+    background: #f4f3ff; border-radius: 12px;
+    padding: 24px 28px; margin-top: 40px;
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 16px; flex-wrap: wrap;
+  }
+  .cta-box h4 { font-size: 16px; font-weight: 800; color: #1a1a2e; margin-bottom: 4px; }
+  .cta-box p { font-size: 13px; color: #666; }
+  .cta-link {
+    background: #837aff; color: #fff; text-decoration: none;
+    padding: 10px 20px; border-radius: 8px; font-size: 13px; font-weight: 700; white-space: nowrap;
+  }
+
+  /* image cards in editor */
+  #img-list { display: flex; flex-direction: column; gap: 0; }
+  .img-card {
+    display: flex; align-items: center; gap: 10px;
+    border: 1px solid #e0e8ff; border-radius: 8px;
+    padding: 8px 12px; margin-bottom: 6px; background: #f8f9ff;
+  }
+  .img-card-thumb { width: 52px; height: 26px; border-radius: 4px; object-fit: cover; flex-shrink: 0; }
+  .img-card-info { flex: 1; min-width: 0; }
+  .img-card-name { font-size: 12px; font-weight: 700; color: #1a1a2e; }
+  .img-card-size { font-size: 10px; color: #999; }
+  .img-card-actions { display: flex; gap: 5px; flex-shrink: 0; }
+  .img-insert-btn {
+    background: #837aff; color: #fff; border: none;
+    border-radius: 5px; padding: 3px 9px; font-size: 11px; font-weight: 700;
+    cursor: pointer; font-family: inherit;
+  }
+  .img-insert-btn:hover { background: #6b62e0; }
+  .img-del-btn {
+    background: #fee2e2; color: #991b1b; border: none;
+    border-radius: 5px; padding: 3px 8px; font-size: 11px; font-weight: 700;
+    cursor: pointer; font-family: inherit;
+  }
+  .img-del-btn:hover { background: #fecaca; }
+
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #ddd; border-radius: 99px; }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div id="top-bar">
+  <h1>😈 고뇌</h1>
+  <button class="tb-btn" onclick="copyText()">텍스트 복사</button>
+  <button class="tb-btn primary" onclick="copyHTML()">HTML 복사</button>
+</div>
+
+<div id="shell">
+
+  <!-- ── LEFT HALF ── -->
+  <div id="left-half">
+
+    <!-- EDITOR -->
+    <div id="editor-panel">
+      <!-- TOOLBAR -->
+      <div id="editor-toolbar">
+        <button class="tool-btn img" onclick="addDummyImage()">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          이미지 추가
+        </button>
+        <button class="tool-btn cta" onclick="insertCTA()">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          CTA 추가
+        </button>
+        <button class="tool-btn reset" onclick="resetAll()">초기화</button>
+      </div>
+
+      <div id="editor-scroll">
+
+        <div>
+          <div class="field-label">카테고리</div>
+          <input id="cat-input" type="text" placeholder="알파리뷰, 업데이트 노트" value="알파리뷰, 업데이트 노트">
+        </div>
+
+        <div>
+          <div class="field-label">
+            제목
+            <span class="count" id="title-count">0자</span>
+          </div>
+          <textarea id="title-input" rows="2" placeholder="제목을 입력하세요"></textarea>
+        </div>
+
+        <div style="flex:1;display:flex;flex-direction:column;">
+          <div class="field-label">본문</div>
+          <textarea id="body-input" placeholder="본문을 작성하세요&#10;&#10;## 소제목&#10;- 리스트&#10;[링크](url)&#10;{img} — 이미지 삽입&#10;{cta} — CTA 삽입"></textarea>
+        </div>
+
+        <!-- IMAGE LIST -->
+        <div id="img-list"></div>
+
+      </div><!-- editor-scroll -->
+    </div><!-- editor-panel -->
+
+    <!-- STATS -->
+    <div id="stats-panel">
+      <div class="sp-section">
+        <div class="sp-title">📊 글자수</div>
+        <div class="stat-row">
+          <span class="stat-name">제목 <i class="tip" data-tip="~30자 최적&#10;~60자 양호&#10;60자↑ 너무 긺">?</i></span>
+          <span class="stat-val" id="s-title">0자</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-name">본문 (공백 포함)</span>
+          <span class="stat-val" id="s-body-ws">0자</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-name">본문 (공백 제외)</span>
+          <span class="stat-val" id="s-body-nos">0자</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-name">단어 수</span>
+          <span class="stat-val" id="s-words">0</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-name">예상 읽기 시간</span>
+          <span class="stat-val" id="s-read-time">0분</span>
+        </div>
+      </div>
+
+      <div class="sp-section">
+        <div class="sp-title">🔍 가독성</div>
+        <div class="readability-wrap">
+          <div class="read-label">
+            종합 점수 <strong id="read-score-num" style="color:#837aff">—</strong>
+            <i class="tip" data-tip="평균 문장 길이, 긴 문장 비율,&#10;소제목 유무로 계산&#10;70점↑ 쉬움 / 45~70점 보통&#10;45점↓ 어려움">?</i>
+          </div>
+          <div class="read-bar-bg">
+            <div class="read-bar-fill" id="read-bar" style="width:0%;background:#837aff"></div>
+          </div>
+          <div class="read-score-row">
+            <span>어려움</span><span>보통</span><span>쉬움</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="sp-section">
+        <div class="sp-title">📐 문장 분석</div>
+        <div class="stat-row">
+          <span class="stat-name">문장 수</span>
+          <span class="stat-val" id="s-sents">0</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-name">평균 문장 길이</span>
+          <span class="stat-val" id="s-avg-sent">0자</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-name">단락 수</span>
+          <span class="stat-val" id="s-paras">0</span>
+        </div>
+        <div style="margin-top:8px">
+          <div class="stat-name" style="margin-bottom:5px;font-size:11px">긴 문장 (50자↑)</div>
+          <div class="sent-chips" id="s-long-chips">
+            <span class="sent-chip" style="color:#bbb">없음</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="sp-section">
+        <div class="sp-title">✅ SEO 체크</div>
+        <div class="stat-row">
+          <span class="stat-name">제목 길이 <i class="tip" data-tip="~30자 최적 (검색 결과에서&#10;잘리지 않는 권장 범위)&#10;~60자 양호 / 60자↑ 주의">?</i></span>
+          <span class="stat-val" id="seo-title">—</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-name">본문 분량 <i class="tip" data-tip="500자↑ 보통&#10;1000자↑ 충분 (검색엔진이&#10;콘텐츠로 인식하는 최소 기준)">?</i></span>
+          <span class="stat-val" id="seo-body">—</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-name">소제목(H2) 수</span>
+          <span class="stat-val" id="seo-h2">0개</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-name">이미지 수</span>
+          <span class="stat-val" id="seo-img">0개</span>
+        </div>
+      </div>
+    </div><!-- stats-panel -->
+
+  </div><!-- left-half -->
+
+  <!-- ── RIGHT HALF: PREVIEW ── -->
+  <div id="preview-panel">
+    <div class="site-wrap">
+
+      <!-- SIDEBAR -->
+      <div class="sidebar">
+        <div class="toc-box">
+          <div class="toc-title">📋 이런 내용을 담았어요</div>
+          <ul id="toc-list">
+            <li><a href="#" style="color:#bbb">(소제목이 생기면 여기에 표시돼요)</a></li>
+          </ul>
+        </div>
+        <div class="newsletter-box">
+          <div class="nl-title">💡 쇼핑몰 마케팅, 더 알고 싶다면</div>
+          <img class="nl-card-img" src="https://alph.kr/wp-content/uploads/2026/06/thumbnail_blog_alpha_canvas_debut-2.png" alt="">
+          <div class="nl-card-title">알파앱스가 쇼핑몰 스킨을 만든 이유</div>
+          <hr class="nl-hr">
+          <img class="nl-card-img" src="https://alph.kr/wp-content/uploads/2026/06/%EB%84%90%EB%8B%B4_%EC%84%B1%EA%B3%B5%EC%82%AC%EB%A1%80_%EB%A9%94%EC%9D%B8-1024x576.png" alt="">
+          <div class="nl-card-title">널담은 어떻게 30만 리뷰를 모았을까</div>
+          <hr class="nl-hr">
+          <p class="nl-desc">실전 마케팅 콘텐츠, 매주 받아보세요.<br>쇼핑몰 고민, 알파레터가 같이 풀어드려요.</p>
+          <input class="nl-input" type="text" placeholder="받는 이메일 주소*">
+          <div class="nl-row">
+            <input class="nl-input" type="text" placeholder="받는 분 이름*">
+            <input class="nl-input" type="text" placeholder="회사">
+          </div>
+          <div class="nl-check"><input type="checkbox"> (필수) <a href="#">개인정보 수집 및 이용</a>에 동의해요.</div>
+          <button class="nl-submit">오늘부터 알파레터 받기</button>
+        </div>
+      </div>
+
+      <!-- POST MAIN -->
+      <div class="post-main">
+        <div class="post-category" id="preview-cat">알파리뷰, 업데이트 노트</div>
+        <h1 id="preview-title">제목을 입력하면 여기에 표시돼요</h1>
+        <div class="post-meta">
+          <span>2026-06-25</span><span>알파앱스</span>
+        </div>
+        <div class="entry-content" id="preview-body">
+          <p style="color:#bbb">본문을 작성하면 여기에 실시간으로 미리보기가 표시돼요.</p>
+        </div>
+      </div>
+
+    </div>
+  </div><!-- preview-panel -->
+
+</div><!-- shell -->
+
+<script>
+// ── STATE ──
+let images = [];
+let imgCounter = 0;
+let hasCTA = false;
+
+const dummyColors = [
+  { bg: '#dbeafe', text: '#3b82f6' },
+  { bg: '#bfdbfe', text: '#2563eb' },
+  { bg: '#e0f2fe', text: '#0284c7' },
+  { bg: '#cffafe', text: '#0891b2' },
+];
+
+function makeDummySVG(idx) {
+  const c = dummyColors[idx % dummyColors.length];
+  const n = idx + 1;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="800" viewBox="0 0 1600 800">
+    <rect width="1600" height="800" fill="${c.bg}"/>
+    <rect x="40" y="40" width="1520" height="720" rx="16" fill="none" stroke="${c.text}" stroke-width="3" stroke-dasharray="16 8" opacity=".4"/>
+    <text x="800" y="370" text-anchor="middle" font-family="system-ui,sans-serif" font-size="64" font-weight="700" fill="${c.text}" opacity=".6">이미지 ${n}</text>
+    <text x="800" y="450" text-anchor="middle" font-family="system-ui,sans-serif" font-size="28" fill="${c.text}" opacity=".4">1600 × 800 (2:1)</text>
+    <circle cx="200" cy="160" r="60" fill="${c.text}" opacity=".07"/>
+    <circle cx="1400" cy="640" r="90" fill="${c.text}" opacity=".07"/>
+    <circle cx="1380" cy="180" r="40" fill="${c.text}" opacity=".05"/>
+    <circle cx="220" cy="620" r="70" fill="${c.text}" opacity=".05"/>
+  </svg>`;
+  return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)));
+}
+
+// ── INSERT AT CURSOR ──
+function insertAtCursor(text) {
+  const ta = document.getElementById('body-input');
+  const start = ta.selectionStart;
+  const end   = ta.selectionEnd;
+  const val   = ta.value;
+  const before = val.slice(0, start);
+  const after  = val.slice(end);
+  const needsNewlineBefore = before.length > 0 && !before.endsWith('\n') ? '\n' : '';
+  const needsNewlineAfter  = after.length > 0 && !after.startsWith('\n') ? '\n' : '';
+  ta.value = before + needsNewlineBefore + text + needsNewlineAfter + after;
+  const pos = start + needsNewlineBefore.length + text.length + needsNewlineAfter.length;
+  ta.selectionStart = ta.selectionEnd = pos;
+  ta.focus();
+  updatePreview();
+  updateStats();
+}
+
+// ── IMAGE ──
+function addDummyImage() {
+  const idx = images.length;
+  const src = makeDummySVG(idx);
+  images.push({ src, id: ++imgCounter });
+  renderImageList();
+  insertAtCursor('{img}');
+}
+
+function insertImgTag(idx) {
+  insertAtCursor(`{img:${idx+1}}`);
+}
+
+function removeImage(id) {
+  images = images.filter(i => i.id !== id);
+  renderImageList();
+  updatePreview();
+  updateStats();
+}
+
+function renderImageList() {
+  const list = document.getElementById('img-list');
+  if (images.length === 0) {
+    list.innerHTML = '';
+    return;
+  }
+  list.innerHTML = images.map((img, i) => `
+    <div class="img-card">
+      <img class="img-card-thumb" src="${img.src}" alt="이미지 ${i+1}">
+      <div class="img-card-info">
+        <div class="img-card-name">이미지 ${i+1}</div>
+        <div class="img-card-size">1600 × 800 · 2:1</div>
+      </div>
+      <div class="img-card-actions">
+        <button class="img-insert-btn" onclick="insertImgTag(${i})">{img} 삽입</button>
+        <button class="img-del-btn" onclick="removeImage(${img.id})">삭제</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── CTA ──
+function insertCTA() {
+  hasCTA = true;
+  insertAtCursor('{cta}');
+}
+
+// ── PARSE BODY ──
+function parseBody(raw) {
+  if (!raw.trim()) return '';
+  let imgIdx = 0;
+  const lines = raw.split('\n');
+  let html = '';
+  let listItems = [];
+
+  function flushList() {
+    if (listItems.length) {
+      html += '<ul>' + listItems.map(li => `<li>${li}</li>`).join('') + '</ul>';
+      listItems = [];
+    }
+  }
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // CTA
+    if (line.trim() === '{cta}') {
+      flushList();
+      html += `<div class="cta-box">
+        <div>
+          <h4>알파앱스와 함께 사랑받는 쇼핑몰로 성장하세요 🚀</h4>
+          <p>알파리뷰 | 알파푸시 | 알파업셀 | 알파캔버스</p>
+        </div>
+        <a class="cta-link" href="#">알파앱스와 성장하기 →</a>
+      </div>`;
+      continue;
+    }
+
+    // Image
+    const imgMatch = line.trim().match(/^\{img(?::(\d+))?\}$/);
+    if (imgMatch) {
+      flushList();
+      const targetIdx = imgMatch[1] ? parseInt(imgMatch[1]) - 1 : imgIdx;
+      if (images[targetIdx]) {
+        html += `<img src="${images[targetIdx].src}" alt="이미지 ${targetIdx+1}">`;
+      } else {
+        const c = dummyColors[targetIdx % dummyColors.length];
+        html += `<div class="preview-img-block" style="background:${c.bg}">
+          <span style="color:${c.text}">이미지 ${targetIdx+1}</span>
+          <small style="color:${c.text}">1600 × 800 (2:1)</small>
+        </div>`;
+      }
+      if (!imgMatch[1]) imgIdx++;
+      continue;
+    }
+
+    // H2
+    if (line.startsWith('## ')) {
+      flushList();
+      html += `<h2>${inlineFormat(line.slice(3))}</h2>`;
+      continue;
+    }
+
+    // List
+    if (line.startsWith('- ') || line.startsWith('* ')) {
+      listItems.push(inlineFormat(line.slice(2)));
+      continue;
+    }
+
+    flushList();
+    if (!line.trim()) continue;
+    html += `<p>${inlineFormat(line)}</p>`;
+  }
+
+  flushList();
+  return html;
+}
+
+function inlineFormat(text) {
+  text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+  text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  return text;
+}
+
+// ── UPDATE PREVIEW ──
+function updatePreview() {
+  const title = document.getElementById('title-input').value.trim();
+  const body  = document.getElementById('body-input').value;
+  const cat   = document.getElementById('cat-input').value.trim();
+
+  document.getElementById('preview-title').textContent = title || '제목을 입력하면 여기에 표시돼요';
+  document.getElementById('preview-cat').textContent   = cat || '';
+
+  const bodyHTML = parseBody(body);
+  document.getElementById('preview-body').innerHTML = bodyHTML ||
+    '<p style="color:#bbb">본문을 작성하면 여기에 실시간으로 미리보기가 표시돼요.</p>';
+
+  // TOC
+  const h2s = [];
+  body.split('\n').forEach(l => { if (l.startsWith('## ')) h2s.push(l.slice(3).trim()); });
+  const toc = document.getElementById('toc-list');
+  toc.innerHTML = h2s.length
+    ? h2s.map(h => `<li><a href="#">${h}</a></li>`).join('')
+    : '<li><a href="#" style="color:#bbb">(소제목이 생기면 여기에 표시돼요)</a></li>';
+}
+
+// ── UPDATE STATS ──
+function updateStats() {
+  const title = document.getElementById('title-input').value;
+  const body  = document.getElementById('body-input').value;
+
+  const tLen   = title.length;
+  const tEl    = document.getElementById('title-count');
+  tEl.textContent = tLen + '자';
+  tEl.className = 'count' + (tLen > 60 ? ' over' : tLen > 40 ? ' warn' : '');
+
+  const bodyNS = body.replace(/\s/g, '').replace(/\{img[^}]*\}/g,'').replace(/\{cta\}/g,'').length;
+  const bodyWS = body.length;
+  const words  = body.trim() ? body.trim().split(/\s+/).length : 0;
+  const readMin = Math.ceil(bodyNS / 600) || 0;
+
+  document.getElementById('s-title').textContent = tLen + '자';
+  document.getElementById('s-title').className = 'stat-val' + (tLen === 0 ? '' : tLen <= 40 ? ' good' : tLen <= 60 ? ' warn' : ' bad');
+  document.getElementById('s-body-ws').textContent = bodyWS.toLocaleString() + '자';
+  document.getElementById('s-body-nos').textContent = bodyNS.toLocaleString() + '자';
+  document.getElementById('s-words').textContent = words.toLocaleString();
+  document.getElementById('s-read-time').textContent = readMin + '분';
+
+  // Sentences
+  const plainBody = body.replace(/^##.*/gm,'').replace(/^\s*[-*].*/gm,'').replace(/\{[^}]*\}/g,'');
+  const sents = plainBody.match(/[^.!?。\n]+[.!?。]?/g)?.filter(s => s.trim().length > 3) || [];
+  const sentCount = sents.length;
+  const avgLen = sentCount ? Math.round(plainBody.replace(/\s/g,'').length / sentCount) : 0;
+  const paras  = body.split(/\n\n+/).filter(p => p.trim() && !p.trim().startsWith('#')).length;
+
+  document.getElementById('s-sents').textContent = sentCount;
+  document.getElementById('s-avg-sent').textContent = avgLen + '자';
+  document.getElementById('s-paras').textContent = paras;
+
+  const longSents = sents.filter(s => s.replace(/\s/g,'').length >= 50);
+  const chipsEl = document.getElementById('s-long-chips');
+  chipsEl.innerHTML = longSents.length === 0
+    ? '<span class="sent-chip" style="color:#bbb">없음 👍</span>'
+    : longSents.slice(0,5).map((s,i) =>
+        `<span class="sent-chip long" title="${s.trim()}">#${i+1} (${s.replace(/\s/g,'').length}자)</span>`
+      ).join('') + (longSents.length > 5 ? `<span class="sent-chip">+${longSents.length-5}개</span>` : '');
+
+  const h2s = (body.match(/^## /gm) || []).length;
+  document.getElementById('seo-h2').textContent = h2s + '개';
+  document.getElementById('seo-h2').className = 'stat-val' + (h2s >= 2 ? ' good' : h2s === 1 ? ' warn' : ' bad');
+
+  document.getElementById('seo-img').textContent = images.length + '개';
+  document.getElementById('seo-img').className = 'stat-val' + (images.length >= 1 ? ' good' : ' warn');
+
+  const seoTitle = document.getElementById('seo-title');
+  if (tLen === 0) { seoTitle.textContent = '—'; seoTitle.className = 'stat-val'; }
+  else if (tLen <= 30) { seoTitle.textContent = '최적 ✓'; seoTitle.className = 'stat-val good'; }
+  else if (tLen <= 60) { seoTitle.textContent = '양호'; seoTitle.className = 'stat-val warn'; }
+  else { seoTitle.textContent = '너무 긺'; seoTitle.className = 'stat-val bad'; }
+
+  const seoBody = document.getElementById('seo-body');
+  if (bodyNS === 0) { seoBody.textContent = '—'; seoBody.className = 'stat-val'; }
+  else if (bodyNS >= 1000) { seoBody.textContent = '충분 ✓'; seoBody.className = 'stat-val good'; }
+  else if (bodyNS >= 500) { seoBody.textContent = '보통'; seoBody.className = 'stat-val warn'; }
+  else { seoBody.textContent = '부족'; seoBody.className = 'stat-val bad'; }
+
+  // Readability
+  let score = 100;
+  if (avgLen > 80) score -= 30;
+  else if (avgLen > 50) score -= 15;
+  if (bodyNS > 0 && bodyNS < 200) score -= 20;
+  if (h2s === 0 && bodyNS > 300) score -= 10;
+  if (longSents.length / Math.max(sentCount, 1) > 0.4) score -= 15;
+  score = Math.max(0, Math.min(100, score));
+
+  const bar = document.getElementById('read-bar');
+  const numEl = document.getElementById('read-score-num');
+  bar.style.width = score + '%';
+  bar.style.background = score >= 70 ? '#10b981' : score >= 45 ? '#f59e0b' : '#ef4444';
+  numEl.textContent = bodyNS > 0 ? score + '점' : '—';
+  numEl.style.color = score >= 70 ? '#10b981' : score >= 45 ? '#f59e0b' : '#ef4444';
+}
+
+// ── RESET ──
+function resetAll() {
+  if (!confirm('작성 내용을 모두 초기화할까요?')) return;
+  document.getElementById('title-input').value = '';
+  document.getElementById('body-input').value  = '';
+  document.getElementById('cat-input').value   = '알파리뷰, 업데이트 노트';
+  images = []; imgCounter = 0; hasCTA = false;
+  renderImageList();
+  updatePreview();
+  updateStats();
+}
+
+// ── COPY TEXT ──
+function copyText() {
+  const title = document.getElementById('title-input').value;
+  const body  = document.getElementById('body-input').value
+    .replace(/\{img[^}]*\}/g, '')
+    .replace(/\{cta\}/g, '')
+    .replace(/^## /gm, '')
+    .replace(/^\s*[-*] /gm, '• ')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .trim();
+  const text = `${title}
+
+${body}`;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = event.target;
+    btn.textContent = '✓ 복사됨!';
+    setTimeout(() => btn.textContent = '텍스트 복사', 1500);
+  });
+}
+
+// ── COPY HTML ──
+function copyHTML() {
+  const title = document.getElementById('title-input').value;
+  const body  = parseBody(document.getElementById('body-input').value);
+  const html  = `<h1>${title}</h1>\n${body}`;
+  navigator.clipboard.writeText(html).then(() => {
+    const btn = event.target;
+    btn.textContent = '✓ 복사됨!';
+    setTimeout(() => btn.textContent = 'HTML 복사', 1500);
+  });
+}
+
+// ── INIT ──
+function loadSample() {
+  document.getElementById('title-input').value = '좋은 리뷰를 상단에 고정하는 가장 쉬운 방법';
+  document.getElementById('body-input').value =
+`쇼핑몰에 쌓인 리뷰 중 고객에게 가장 먼저 보여주고 싶은 리뷰는 무엇인가요?
+
+상품의 장점이 구체적으로 드러나고, 구매를 고민하는 고객에게 도움이 되는 리뷰라면 리뷰 목록 가장 위에 고정할 가치가 있어요.
+
+## 가장 먼저 보이는 리뷰가 쇼핑몰 첫인상
+
+사람의 첫인상은 0.1~5초 사이의 짧은 시간에 결정된다고 해요. 온라인에서 파는 제품도 마찬가지에요.
+
+- 구매 전환율 극대화: 고객의 구매 결정을 빠르게 유도할 수 있어요.
+- 신뢰도 및 품질 증명: 사진, 영상 등이 포함된 진정성 있는 리뷰는 신뢰를 확보할 수 있는 가장 강력한 마케팅 수단이에요.
+- 브랜드 메시지 강조: 고객의 목소리를 빌려 쇼핑몰이 의도한 셀링 포인트를 효과적으로 전달할 수 있어요.
+- 리스크 방어: 단순 오해 또는 배송 지연으로 남긴 불만 리뷰가 먼저 나오지 않게 할 수 있어요.
+
+{img}
+
+## 고정하면 좋은 리뷰를 AI가 먼저 골라 추천해요
+
+이제 알파리뷰 AI가 가장 위에 고정하기 좋은 리뷰를 먼저 골라 추천해요.
+
+{img}
+
+## 바빠도 괜찮아요! 매주 새로운 리뷰 자동 고정
+
+자동화 옵션을 켜두면 AI가 새로 들어온 리뷰 중에서 도움이 될 만한 것을 골라 자동으로 반영해요.
+
+{img}
+
+## 우리 쇼핑몰 맞춤 추천까지 한꺼번에
+
+알파리뷰 AI는 쇼핑몰이 선호하는 리뷰를 계속 학습해서 더 필요한 리뷰를 추천해요.`;
+
+  for (let i = 0; i < 3; i++) {
+    const idx = images.length;
+    images.push({ src: makeDummySVG(idx), id: ++imgCounter });
+  }
+  renderImageList();
+  updatePreview();
+  updateStats();
+}
+
+document.getElementById('title-input').addEventListener('input', () => { updatePreview(); updateStats(); });
+document.getElementById('body-input').addEventListener('input', () => { updatePreview(); updateStats(); });
+document.getElementById('cat-input').addEventListener('input', updatePreview);
+
+updatePreview();
+updateStats();
+</script>
+</body>
+</html>
