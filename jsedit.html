@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>😈 고뇌</title>
+<title>😈 고뇌: 라이브</title>
 <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css" />
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -502,7 +502,7 @@
             <input class="nl-input" type="text" placeholder="회사">
           </div>
           <div class="nl-check"><input type="checkbox"> (필수) <a href="#">개인정보 수집 및 이용</a>에 동의해요.</div>
-          <button class="nl-submit">뉴스레터/button>
+          <button class="nl-submit">뉴스레터/button></button>
         </div>
       </div>
 
@@ -680,7 +680,13 @@ function parseBody(raw) {
     }
 
     flushList();
-    if (!line.trim()) continue;
+
+    // 빈 줄: 줄 수만큼 24px 여백을 쌓아서, 엔터를 여러 번 칠수록 간격이 비례해서 벌어지게 함
+    if (!line.trim()) {
+      html += `<div style="height:24px" aria-hidden="true"></div>`;
+      continue;
+    }
+
     html += `<p>${inlineFormat(line)}</p>`;
   }
 
@@ -836,50 +842,6 @@ function copyHTML() {
     btn.textContent = '✓ 복사됨!';
     setTimeout(() => btn.textContent = 'HTML 복사', 1500);
   });
-}
-
-// ── INIT ──
-function loadSample() {
-  document.getElementById('title-input').value = '좋은 리뷰를 상단에 고정하는 가장 쉬운 방법';
-  document.getElementById('body-input').value =
-`쇼핑몰에 쌓인 리뷰 중 고객에게 가장 먼저 보여주고 싶은 리뷰는 무엇인가요?
-
-상품의 장점이 구체적으로 드러나고, 구매를 고민하는 고객에게 도움이 되는 리뷰라면 리뷰 목록 가장 위에 고정할 가치가 있어요.
-
-## 가장 먼저 보이는 리뷰가 쇼핑몰 첫인상
-
-사람의 첫인상은 0.1~5초 사이의 짧은 시간에 결정된다고 해요. 온라인에서 파는 제품도 마찬가지에요.
-
-- 구매 전환율 극대화: 고객의 구매 결정을 빠르게 유도할 수 있어요.
-- 신뢰도 및 품질 증명: 사진, 영상 등이 포함된 진정성 있는 리뷰는 신뢰를 확보할 수 있는 가장 강력한 마케팅 수단이에요.
-- 브랜드 메시지 강조: 고객의 목소리를 빌려 쇼핑몰이 의도한 셀링 포인트를 효과적으로 전달할 수 있어요.
-- 리스크 방어: 단순 오해 또는 배송 지연으로 남긴 불만 리뷰가 먼저 나오지 않게 할 수 있어요.
-
-{img}
-
-## 고정하면 좋은 리뷰를 AI가 먼저 골라 추천해요
-
-이제 알파리뷰 AI가 가장 위에 고정하기 좋은 리뷰를 먼저 골라 추천해요.
-
-{img}
-
-## 바빠도 괜찮아요! 매주 새로운 리뷰 자동 고정
-
-자동화 옵션을 켜두면 AI가 새로 들어온 리뷰 중에서 도움이 될 만한 것을 골라 자동으로 반영해요.
-
-{img}
-
-## 우리 쇼핑몰 맞춤 추천까지 한꺼번에
-
-알파리뷰 AI는 쇼핑몰이 선호하는 리뷰를 계속 학습해서 더 필요한 리뷰를 추천해요.`;
-
-  for (let i = 0; i < 3; i++) {
-    const idx = images.length;
-    images.push({ src: makeDummySVG(idx), id: ++imgCounter });
-  }
-  renderImageList();
-  updatePreview();
-  updateStats();
 }
 
 document.getElementById('title-input').addEventListener('input', () => { updatePreview(); updateStats(); });
